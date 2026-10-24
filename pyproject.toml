@@ -7,7 +7,7 @@ name = "senpilot-regulatory-agent"
 version = "0.1.0"
 description = "Email-driven UARB document retrieval agent with a local demo mode"
 requires-python = ">=3.11"
-dependencies = ["playwright>=1.50,<2", "python-dotenv>=1,<2"]
+dependencies = ["playwright>=1.50,<2", "python-dotenv>=1,<2", "google-auth-oauthlib>=1.2,<2"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]

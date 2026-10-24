@@ -77,7 +77,30 @@ def make_reply(recipient: str, subject: str, body: str, archive: Path | None = N
     return message
 
 
+def transport():
+    value = (os.getenv("EMAIL_TRANSPORT") or "imap-smtp").strip().lower()
+    if value not in {"imap-smtp", "gmail-api"}:
+        raise ValueError("EMAIL_TRANSPORT must be imap-smtp or gmail-api")
+    return value
+
+
+class DeliveryError(OSError):
+    """Delivery may be uncertain; never automatically send a second reply."""
+
+
 def send(message: EmailMessage):
+    if transport() == "gmail-api":
+        from .gmail import GmailMailbox
+        mailbox = None
+        try:
+            mailbox = GmailMailbox()
+            mailbox.send(message)
+        except Exception as exc:
+            raise DeliveryError(str(exc)) from None
+        finally:
+            if mailbox:
+                mailbox.close()
+        return
     host = os.getenv("SMTP_HOST", "smtp.gmail.com")
     port = int(os.getenv("SMTP_PORT", "465"))
     username = os.environ["AGENT_EMAIL"]
@@ -103,3 +126,37 @@ def connect_imap():
         client.logout()
         raise RuntimeError("Could not select the agent inbox")
     return client
+
+
+def check_connection(log=print):
+    """Check authentication without sending email or marking messages read."""
+    if not os.getenv("AGENT_EMAIL"):
+        raise ValueError("Set AGENT_EMAIL in .env")
+    if transport() == "gmail-api":
+        from .gmail import GmailMailbox
+        mailbox = GmailMailbox()
+        try:
+            mailbox.unread()
+            log(f"Gmail API authenticated: {mailbox.address}")
+            log("Inbox access: OK. No messages were changed or sent.")
+        finally:
+            mailbox.close()
+        return
+    if not os.getenv("EMAIL_PASSWORD"):
+        raise ValueError("Set EMAIL_PASSWORD, or set EMAIL_TRANSPORT=gmail-api and run authorize-google.")
+    client = connect_imap()
+    client.logout()
+    log("IMAP authentication: OK")
+    host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    port = int(os.getenv("SMTP_PORT", "465"))
+    context = ssl.create_default_context()
+    if port == 465:
+        smtp = smtplib.SMTP_SSL(host, port, context=context, timeout=30)
+    else:
+        smtp = smtplib.SMTP(host, port, timeout=30)
+        smtp.ehlo()
+        smtp.starttls(context=context)
+        smtp.ehlo()
+    with smtp:
+        smtp.login(os.environ["AGENT_EMAIL"], os.environ["EMAIL_PASSWORD"])
+    log("SMTP authentication: OK. No email was sent.")

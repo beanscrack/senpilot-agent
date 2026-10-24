@@ -7,7 +7,8 @@ import sqlite3
 import time
 from email.parser import BytesParser
 import email.policy
-from .mail import connect_imap, make_reply, read_email, reply_address, send, should_ignore
+from .mail import make_reply, read_email, reply_address, send, should_ignore, transport
+from .inbox import open_inbox
 from .requests import ClarificationNeeded, parse_request
 from .workflow import run
 
@@ -77,7 +78,8 @@ def watch_local(inbox: Path, output: Path, *, once=False, headed=False, log=prin
 
 
 def watch_email(output: Path, *, once=False, headed=False, log=print):
-    for key in ("AGENT_EMAIL", "EMAIL_PASSWORD"):
+    required = ("AGENT_EMAIL", "EMAIL_PASSWORD") if transport() == "imap-smtp" else ("AGENT_EMAIL",)
+    for key in required:
         if not os.getenv(key):
             raise ValueError(f"Set {key} in .env before starting the email worker.")
     state = State(output / "email-state.sqlite3")
@@ -87,40 +89,37 @@ def watch_email(output: Path, *, once=False, headed=False, log=print):
     while True:
         client = None
         try:
-            client = connect_imap()
-            validity = client.response("UIDVALIDITY")[1]
-            account = f"{own}/{os.getenv('IMAP_FOLDER', 'INBOX')}/{validity}"
-            status, data = client.uid("search", None, "UNSEEN")
-            if status != "OK":
-                raise RuntimeError("Inbox search failed")
-            for uid in data[0].split()[:10]:
-                key = f"{account}/{uid.decode()}"
+            client = open_inbox()
+            for uid in client.unread():
+                key = client.key(uid)
                 current = state.status(key)
                 if current in {"sent", "ignored"}:
-                    client.uid("store", uid, "+FLAGS", "(\\Seen)")
+                    client.mark_read(uid)
                     continue
                 if current:
                     # A crash during SMTP may have delivered a reply. Do not resend automatically.
-                    log(f"Skipping UID {uid.decode()} with status {current}; inspect state before retrying")
+                    log(f"Skipping message {uid!s} with status {current}; inspect state before retrying")
                     continue
-                status, raw = client.uid("fetch", uid, "(BODY.PEEK[])")
-                if status != "OK":
-                    raise RuntimeError("Email fetch failed")
-                payload = next(x[1] for x in raw if isinstance(x, tuple))
+                payload = client.fetch(uid)
                 message, _ = read_email(payload)
                 sender = reply_address(message)
                 if should_ignore(message, own) or (allowed and sender.lower() not in allowed):
                     state.set(key, "ignored")
-                    client.uid("store", uid, "+FLAGS", "(\\Seen)")
+                    client.mark_read(uid)
                     continue
                 state.set(key, "processing")
                 try:
                     reply = handle(payload, output, deliver=True, headed=headed, log=log)
                     state.set(key, "sent", str(reply))
-                    client.uid("store", uid, "+FLAGS", "(\\Seen)")
+                    try:
+                        client.mark_read(uid)
+                    except Exception:
+                        # Delivery succeeded. Keep the durable sent state even if
+                        # changing a Gmail label/IMAP flag fails afterwards.
+                        log("Reply sent, but marking the request read failed; it will be retried without resending.")
                 except Exception as exc:
                     state.set(key, "failed", str(exc))
-                    log(f"Request UID {uid.decode()} failed: {exc}")
+                    log(f"Request message {uid!s} failed: {exc}")
                     # Retrieval failures are actionable; send a truthful failure response.
                     # Do not send another message after an uncertain SMTP failure.
                     if not isinstance(exc, (OSError,)) and exc.__class__.__module__ != "smtplib":
@@ -130,7 +129,7 @@ def watch_email(output: Path, *, once=False, headed=False, log=print):
                         try:
                             send(error_reply)
                             state.set(key, "sent", "Failure notification")
-                            client.uid("store", uid, "+FLAGS", "(\\Seen)")
+                            client.mark_read(uid)
                         except Exception:
                             log("Failure notification could not be delivered; operator action required")
         except Exception as exc:
@@ -140,7 +139,7 @@ def watch_email(output: Path, *, once=False, headed=False, log=print):
         finally:
             if client:
                 try:
-                    client.logout()
+                    client.close()
                 except Exception:
                     pass
         if once:

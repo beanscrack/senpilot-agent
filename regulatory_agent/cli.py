@@ -26,6 +26,9 @@ def main():
     eml.add_argument("path", type=Path)
     serve = sub.add_parser("demo", help="Start the local demo in a browser")
     serve.add_argument("--port", type=int, default=8765)
+    authorize = sub.add_parser("authorize-google", help="Connect Gmail through Google browser sign-in")
+    authorize.add_argument("--client", type=Path, help="Downloaded Desktop app OAuth client JSON")
+    sub.add_parser("check-email", help="Check email authentication without sending or changing messages")
     for item in (fetch, local, email, eml, serve):
         item.add_argument("--output", type=Path, default=Path("output"))
         item.add_argument("--headed", action="store_true", help="Show browser navigation")
@@ -49,6 +52,12 @@ def main():
         elif args.command == "demo":
             from .demo import serve
             serve(args.output, port=args.port, headed=args.headed)
+        elif args.command == "authorize-google":
+            from .gmail import authorize
+            authorize(args.client, log=log)
+        elif args.command == "check-email":
+            from .mail import check_connection
+            check_connection(log=log)
     except KeyboardInterrupt:
         print("Stopped.", flush=True)
     except Exception as exc:
