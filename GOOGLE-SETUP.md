@@ -62,4 +62,12 @@ Leave the request unread in the inbox until the worker picks it up. The reply sh
 - **Desktop app required:** download a Desktop app client, rather than a web client or service account.
 - **Sign-in expired/revoked:** rerun `authorize-google`. It does not require an app password.
 
-The OAuth adapter and MIME/deduplication behavior are covered by automated tests. Live OAuth sign-in and delivery still require your client JSON and browser authorization before they can be verified.
+The OAuth adapter and MIME/deduplication behavior are covered by automated tests. Google sign-in, inbox access, and live self-delivery of a ZIP were verified on October 23, 2026 (Toronto time). The received attachment matched the generated ZIP byte-for-byte. This self-delivery test does not replace an external sender request through the worker.
+
+To repeat that explicit self-delivery test (sends one actual email to `AGENT_EMAIL`):
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_live_email.py
+```
+
+The local worker's background logs are `output/email-worker.log` and `output/email-worker-error.log`. Its launch process ID is saved in `output/email-worker.pid`. For interactive operation, run `python -m regulatory_agent email` in a terminal and press Ctrl+C to stop it; stop any existing background worker before starting another. Running processes and logs are local to this machine; the worker does not restart automatically after a computer restart.
