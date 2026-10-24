@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "senpilot-regulatory-agent"
+version = "0.1.0"
+description = "Email-driven UARB document retrieval agent with a local demo mode"
+requires-python = ">=3.11"
+dependencies = ["playwright>=1.50,<2", "python-dotenv>=1,<2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+regulatory-agent = "regulatory_agent.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["regulatory_agent*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
