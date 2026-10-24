@@ -9,6 +9,7 @@ from email.parser import BytesParser
 import email.policy
 from .mail import make_reply, read_email, reply_address, send, should_ignore, transport
 from .inbox import open_inbox
+from .llm import configured_provider
 from .requests import ClarificationNeeded, parse_request
 from .workflow import run
 
@@ -33,7 +34,7 @@ def handle(data: bytes, output: Path, *, deliver=False, headed=False, log=print)
     message, text = read_email(data)
     recipient = reply_address(message)
     try:
-        request = parse_request(text)
+        request = parse_request(text, log=log)
     except ClarificationNeeded as exc:
         reply = make_reply(recipient, "Re: Please clarify your document request", str(exc), original=message)
         output.mkdir(parents=True, exist_ok=True)
@@ -86,6 +87,9 @@ def watch_email(output: Path, *, once=False, headed=False, log=print):
     own = os.environ["AGENT_EMAIL"]
     allowed = {x.strip().lower() for x in os.getenv("ALLOWED_SENDERS", "").split(",") if x.strip()}
     log(f"Listening for unread email at {own}")
+    provider = configured_provider()
+    model = os.getenv("LLM_MODEL", "") if provider == "openai-compatible" else os.getenv("OLLAMA_MODEL", "")
+    log(f"Request interpretation: {provider}" + (f" / {model}" if model else ""))
     while True:
         client = None
         try:

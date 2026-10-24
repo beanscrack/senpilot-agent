@@ -111,7 +111,8 @@ def serve(output: Path, *, port=8765, headed=False):
                 data=json.loads(self.rfile.read(size))
                 if not isinstance(data,dict):
                     raise ValueError("Expected a JSON object")
-                request=parse_request(str(data.get("request","")))
+                parsing_logs=[]
+                request=parse_request(str(data.get("request","")),log=parsing_logs.append)
                 limit=int(data.get("limit",10))
                 if not 1<=limit<=10:
                     raise ValueError("Limit must be between 1 and 10")
@@ -121,7 +122,7 @@ def serve(output: Path, *, port=8765, headed=False):
                 if any(j["status"]=="running" for j in jobs.values()):
                     return self.respond({"error":"An agent request is already running. Wait for it to complete."},status=409)
                 job_id=uuid.uuid4().hex
-                jobs[job_id]={"status":"running","logs":[]}
+                jobs[job_id]={"status":"running","logs":parsing_logs}
             executor.submit(task,job_id,request,limit)
             self.respond({"id":job_id},status=202)
 

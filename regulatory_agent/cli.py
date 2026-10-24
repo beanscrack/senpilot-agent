@@ -29,6 +29,7 @@ def main():
     authorize = sub.add_parser("authorize-google", help="Connect Gmail through Google browser sign-in")
     authorize.add_argument("--client", type=Path, help="Downloaded Desktop app OAuth client JSON")
     sub.add_parser("check-email", help="Check email authentication without sending or changing messages")
+    sub.add_parser("check-llm", help="Verify a real model interpretation without email or downloads")
     for item in (fetch, local, email, eml, serve):
         item.add_argument("--output", type=Path, default=Path("output"))
         item.add_argument("--headed", action="store_true", help="Show browser navigation")
@@ -58,6 +59,14 @@ def main():
         elif args.command == "check-email":
             from .mail import check_connection
             check_connection(log=log)
+        elif args.command == "check-llm":
+            from .llm import configured_provider
+            if configured_provider() != "openai-compatible":
+                raise ValueError("Set LLM_PROVIDER=openai-compatible before running check-llm")
+            request = parse_request("Please get the miscellaneous filings for M12205", log=log, allow_fallback=False)
+            if request.parser != "openai-compatible" or request.category != "Other Documents":
+                raise ValueError("The model did not interpret the verification request correctly")
+            log(f"Model check passed: {request.model} interpreted {request.matter} / {request.category}")
     except KeyboardInterrupt:
         print("Stopped.", flush=True)
     except Exception as exc:

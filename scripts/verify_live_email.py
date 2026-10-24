@@ -16,14 +16,15 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 from regulatory_agent.gmail import GmailMailbox
-from regulatory_agent.models import Request
+from regulatory_agent.requests import parse_request
 from regulatory_agent.workflow import run
 
 
 def main():
     load_dotenv(Path.cwd()/'.env')
     address=os.environ['AGENT_EMAIL']
-    artifacts=asyncio.run(run(Request('M12205','Other Documents'),Path('output'),
+    request=parse_request('Please get the miscellaneous filings for M12205')
+    artifacts=asyncio.run(run(request,Path('output'),
                              limit=1,recipient=address))
     if not artifacts.archive:
         raise RuntimeError('The live test needs a downloaded ZIP attachment')
@@ -58,6 +59,8 @@ def main():
             'zip_attachment_verified':True,
             'zip_sha256':hashlib.sha256(expected).hexdigest(),
             'artifact_directory':str(artifacts.directory),
+            'request_parser':artifacts.result.request.parser,
+            'request_model':artifacts.result.request.model,
             'note':'Self-delivery test; an external sender request is a separate test.',
         }
         Path('output/live-email-check.json').write_text(json.dumps(report,indent=2),encoding='utf8')

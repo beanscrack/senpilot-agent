@@ -8,6 +8,8 @@ CATEGORIES = ("Exhibits", "Key Documents", "Other Documents", "Transcripts", "Re
 class Request:
     matter: str
     category: str
+    parser: str = "rules"
+    model: str = ""
 
 
 @dataclass
