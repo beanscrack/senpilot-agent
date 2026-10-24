@@ -62,6 +62,12 @@ Leave the request unread in the inbox until the worker picks it up. The reply sh
 - **Desktop app required:** download a Desktop app client, rather than a web client or service account.
 - **Sign-in expired/revoked:** rerun `authorize-google`. It does not require an app password.
 
+## If a request is put in Spam
+
+The worker processes unread **Inbox** messages; it does not automatically answer Spam. In the agent's Gmail account, select the legitimate request in Spam and choose **Not spam**, then leave it unread in Inbox so the worker can process it. For repeat testing, add the sender to that account's contacts or create a sender-specific filter using **Never send it to Spam**. Do not disable spam filtering for all senders. See [Google's guidance on valid messages in Spam](https://support.google.com/mail/answer/1366858?hl=en).
+
+If the agent's reply is put in the recipient's Spam folder, the recipient can mark that reply **Not spam** and add the agent address to their contacts.
+
 The OAuth adapter and MIME/deduplication behavior are covered by automated tests. Google sign-in, inbox access, and live self-delivery of a ZIP were verified on October 23, 2026 (Toronto time). The received attachment matched the generated ZIP byte-for-byte. This self-delivery test does not replace an external sender request through the worker.
 
 To repeat that explicit self-delivery test (sends one actual email to `AGENT_EMAIL`):

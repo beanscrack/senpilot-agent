@@ -62,7 +62,7 @@ Failed runs preserve `error.json` and, when available, `error.png` and `error.ht
 
 Live email handling supports **Google sign-in through the Gmail API** and **IMAP/SMTP with an app password**. The local demo works independently of either transport.
 
-If app passwords are unavailable, follow [GOOGLE-SETUP.md](GOOGLE-SETUP.md). It covers the Google Desktop app OAuth client, browser sign-in, authentication check, and worker startup. The agent validates the signed-in mailbox and refreshes tokens automatically. No Gmail password is used in this mode. Google sign-in, inbox access, and a live self-delivery test have now been verified; an external sender round trip is a separate check.
+If app passwords are unavailable, follow [GOOGLE-SETUP.md](GOOGLE-SETUP.md). It covers the Google Desktop app OAuth client, browser sign-in, authentication check, and worker startup. The agent validates the signed-in mailbox and refreshes tokens automatically. No Gmail password is used in this mode. Google sign-in, inbox access, ZIP self-delivery, and processing an external sender's request through the live worker have been verified.
 
 For the IMAP/SMTP option:
 
@@ -104,7 +104,7 @@ The largest discovery was that GO GET IT opens a second dialog; clicking the fil
 - A 17 MiB uncompressed file budget leaves room for ZIP/MIME overhead under common 25 MB message limits. Files that exceed it are omitted and reported. Large recordings may therefore need a different delivery mechanism. A large file is downloaded before its size can be checked; this is a known disk/bandwidth limit.
 - Filename sanitization, per-run directories, SHA-256 hashes, download timeouts, and HTML-error-page detection protect output integrity.
 - Auto-replies, mailing-list traffic, and self-sent mail are ignored to prevent reply loops. Email content cannot select a different website, shell command, or response recipient.
-- This is a single-worker prototype. Site layout changes can require updates to the adapter. External sender round trips, hosted operation, and positive transcript/recording downloads have not been verified. OAuth sign-in and live ZIP self-delivery have been verified.
+- This is a single-worker prototype. Site layout changes can require updates to the adapter. Hosted operation and positive transcript/recording downloads have not been verified. OAuth sign-in, live ZIP self-delivery, and replying to an external sender's request have been verified; the recipient's inbox placement has not been independently confirmed.
 
 ## Verification
 
@@ -126,6 +126,7 @@ Live verification on October 23, 2026 (Toronto time):
 - M99999: returned a not-found failure without downloading documents.
 - Browser demo: form submission, live progress, ZIP and `.eml` downloads, desktop/mobile layout, and no JavaScript errors.
 - Google OAuth: connected the configured mailbox and verified inbox access. Sent a ZIP containing one freshly downloaded live document to the agent's own inbox and confirmed the received attachment matched the archive byte-for-byte. See `scripts/verify_live_email.py`; local results are recorded in `output/live-email-check.json`.
+- External request: the user's M12205 / Other Documents request initially landed in the agent's Spam folder. After that confirmed request was moved to Inbox as unread, the running worker downloaded ten documents, created the ZIP, and sent the metadata/counts/ZIP response to the original sender. Durable state recorded the request as sent. Recipient inbox placement was not independently confirmed.
 
 Counts and metadata may change after verification. The assignment's sample is not hardcoded.
 
