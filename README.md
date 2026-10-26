@@ -2,6 +2,10 @@
 
 An email-driven agent that retrieves public Nova Scotia regulatory documents. It accepts a matter number and a document type, navigates UARB's FileMaker website, downloads up to ten files, and produces a ZIP and a reply with current matter metadata and counts across all five categories.
 
+**Code:** [beanscrack/senpilot-agent](https://github.com/beanscrack/senpilot-agent) · **Agent email:** `j692wu@gmail.com`
+
+Example email: `Hi Agent, can you give me Other Documents files from M12205?` The mailbox is monitored by a local worker; keep the computer and worker running during evaluation. The configured model also depends on the GPU VM and SSH tunnel. GitHub hosts the source code, not the running worker.
+
 The active setup uses **swift**, served by the user's vLLM endpoint over an SSH tunnel, to interpret email requests. The LLM returns a structured intent; application code validates it and runs the browser/download/email workflow.
 
 ## Language model connection
@@ -147,7 +151,7 @@ The largest discovery was that GO GET IT opens a second dialog; clicking the fil
 
 The automated tests cover request validation, ambiguous requests, quoted email handling, MIME parsing/threading, clarification messages, durable state, count parsing, safe filenames, ZIP/MIME integrity, mocked TLS SMTP transmission, Gmail API request/response handling, account validation, OAuth setup/credential storage, delivery deduplication, real model-path dispatch with mocked responses, malformed/conflicting model output, and tunnel failure behavior. The legacy Ollama provider itself has not been live-tested.
 
-On October 24, 2026, all **54 automated tests** passed. The active `swift` endpoint also passed **9/9 live intent cases**, covering all five categories, paraphrases, generic ambiguous requests, and multiple matters. Synthetic live-eval results are saved locally in `output/llm-check.json`.
+On October 25, 2026, all **54 automated tests** passed again, Gmail authentication/inbox access succeeded, and a real `swift` inference check passed. On October 24, the endpoint passed **9/9 live intent cases**, covering all five categories, paraphrases, generic ambiguous requests, and multiple matters. Synthetic live-eval results are saved locally in `output/llm-check.json`.
 
 Live verification on October 23, 2026 (Toronto time):
 
@@ -161,7 +165,3 @@ Live verification on October 23, 2026 (Toronto time):
 - External request: the user's M12205 / Other Documents request initially landed in the agent's Spam folder. After that confirmed request was moved to Inbox as unread, the running worker downloaded ten documents, created the ZIP, and sent the metadata/counts/ZIP response to the original sender. Durable state recorded the request as sent. Recipient inbox placement was not independently confirmed.
 
 Counts and metadata may change after verification. The assignment's sample is not hardcoded.
-
-## For the submission
-
-Record the local demo, show the downloaded ZIP and reply, then explain the browser adapter and component boundaries. Connect the dedicated email inbox and keep the worker running before submitting an address for evaluators. Publish this source folder to a repository and share its URL. The confidential assignment PDF, credentials, downloaded documents, and local output folders are not included in source control.

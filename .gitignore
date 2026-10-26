@@ -12,3 +12,4 @@ tmp/
 inbox/
 *.sqlite3*
 *.egg-info/
+DEMO-GUIDE.md
